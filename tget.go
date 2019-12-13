@@ -2,6 +2,7 @@ package tget
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -56,14 +57,17 @@ func (r *Request) Download(target string, parallel int) error {
 		return err
 	}
 
-	out.Seek(0, io.SeekStart)
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, out); err != nil {
-		return err
-	}
+	if r.CheckSum != "" {
+		out.Seek(0, io.SeekStart)
+		hasher := sha256.New()
+		if _, err := io.Copy(hasher, out); err != nil {
+			return err
+		}
 
-	if r.CheckSum != "" && r.CheckSum != string(hasher.Sum(nil)) {
-		return ErrCheckSum
+		fCheckSum := hex.EncodeToString(hasher.Sum(nil))
+		if r.CheckSum != "" && r.CheckSum != fCheckSum {
+			return ErrCheckSum
+		}
 	}
 
 	return nil
