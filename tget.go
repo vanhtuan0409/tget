@@ -1,6 +1,8 @@
 package tget
 
 import (
+	"crypto/sha256"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -10,6 +12,10 @@ const (
 	acceptRangeHeader        = "Accept-Ranges"
 	contentDispositionHeader = "Content-Disposition"
 	contentLengthHeader      = "Content-Length"
+)
+
+var (
+	ErrCheckSum = errors.New("Checksum is not valid")
 )
 
 type Request struct {
@@ -49,5 +55,16 @@ func (r *Request) Download(target string, parallel int) error {
 	if _, err := io.Copy(out, resp.Body); err != nil {
 		return err
 	}
+
+	out.Seek(0, io.SeekStart)
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, out); err != nil {
+		return err
+	}
+
+	if r.CheckSum != "" && r.CheckSum != string(hasher.Sum(nil)) {
+		return ErrCheckSum
+	}
+
 	return nil
 }
